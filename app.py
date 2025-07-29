@@ -1,28 +1,30 @@
 import streamlit as st
-from langchain_ollama import OllamaLLM
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.chains import RetrievalQA
-from langchain.chains.question_answering import load_qa_chain
-from langchain.llms import Ollama
-from langchain.text_splitter import CharacterTextSplitter
-from langchain_community.document_loaders import TextLoader
+from langchain_community.llms import HuggingFaceHub
+import os
+
+st.set_page_config(page_title="🛫 Changi Airport Chatbot")
+
+st.title("🛫 Changi Airport Chatbot")
+query = st.text_input("Ask something about Changi Airport")
 
 # Load vectorstore
-vectorstore = FAISS.load_local("vectorstore/changi_index", HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2"), allow_dangerous_deserialization=True)
-retriever = vectorstore.as_retriever()
+embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+vectorstore = FAISS.load_local("vectorstore/changi_index", embeddings, allow_dangerous_deserialization=True)
 
-llm = OllamaLLM(model="llama3")
+# Use Hugging Face model
+os.environ["HUGGINGFACEHUB_API_TOKEN"] = st.secrets["hf_token"]
 
-qa = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
+llm = HuggingFaceHub(
+    repo_id="google/flan-t5-small",  # free model
+    model_kwargs={"temperature": 0.5, "max_length": 256}
+)
 
-# Streamlit UI
-st.set_page_config(page_title="Changi Chatbot")
-st.title("🛫 Changi Airport Chatbot")
-
-query = st.text_input("Ask something about Changi Airport")
+qa = RetrievalQA.from_chain_type(llm=llm, retriever=vectorstore.as_retriever(), chain_type="stuff")
 
 if query:
     with st.spinner("Thinking..."):
-        result = qa.invoke({"query": query})
-        st.success(result["result"])
+        response = qa.invoke({"query": query})
+        st.write("💬", response["result"])
