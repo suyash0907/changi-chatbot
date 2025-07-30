@@ -12,7 +12,13 @@ query = st.text_input("Ask something about Changi Airport")
 
 # Load vectorstore
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-vectorstore = FAISS.load_local("vectorstore/index.faiss", embeddings, allow_dangerous_deserialization=True)
+vectorstore = FAISS.load_local(
+    folder_path="vectorstore",
+    index_name="index",  # not index.faiss
+    embeddings=embeddings,
+    allow_dangerous_deserialization=True
+)
+
 
 # Use Hugging Face model
 os.environ["HUGGINGFACEHUB_API_TOKEN"] = st.secrets["hf_token"]
